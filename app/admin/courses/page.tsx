@@ -1,45 +1,95 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Search, Plus, Pencil, Clock, Users } from 'lucide-react';
+import { Search, Plus, Pencil, Clock, Users, Trash2 } from 'lucide-react';
 
 export default function CoursesPage() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [isAddCourseDialogOpen, setIsAddCourseDialogOpen] = useState(false);
+  const [courses, setCourses] = useState<any[]>([]);
 
-  const courses = [
-    {
-      id: 1,
-      title: 'Advanced Web Development',
-      description: 'Learn modern web development techniques and best practices.',
-      instructor: 'John Smith',
-      duration: '12 weeks',
-      enrolled: 156,
-      price: 199.99,
-      image: 'https://images.unsplash.com/photo-1516116216624-53e697fedbea?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&h=300&q=80',
-    },
-    {
-      id: 2,
-      title: 'Data Science Fundamentals',
-      description: 'Introduction to data analysis and machine learning.',
-      instructor: 'Sarah Johnson',
-      duration: '8 weeks',
-      enrolled: 89,
-      price: 149.99,
-      image: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?ixlib=rb-1.2.1&auto=format&fit=crop&w=400&h=300&q=80',
-    },
-  ];
+  // Form state for new course
+  const [newCourse, setNewCourse] = useState({
+    title: '',
+    description: '',
+    instructor: '',
+    duration: '',
+    price: 0,
+    image: '',
+  });
+
+  // Fetch courses on component mount
+  useEffect(() => {
+    const fetchCourses = async () => {
+      const response = await fetch('/api/courses');
+      const data = await response.json();
+      setCourses(data);
+    };
+
+    fetchCourses();
+  }, []);
+
+  // Filter courses based on search query
+  const filteredCourses = courses.filter(course =>
+    course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    course.instructor.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleAddCourse = async () => {
+    // Validate the input fields before proceeding
+    if (!newCourse.title || !newCourse.description || !newCourse.instructor || !newCourse.duration || !newCourse.price) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    const response = await fetch('/api/courses', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newCourse),
+    });
+
+    const addedCourse = await response.json();
+    if (response.ok) {
+      setCourses((prevCourses) => [...prevCourses, addedCourse]);
+      setIsAddCourseDialogOpen(false); // Close the dialog after course is added
+      setNewCourse({
+        title: '',
+        description: '',
+        instructor: '',
+        duration: '',
+        price: 0,
+        image: '',
+      }); // Reset form
+    } else {
+      alert('Failed to add course');
+    }
+  };
+
+  const handleDeleteCourse = async (courseId: number) => {
+    // For now, we will only remove it from the UI. You can extend this to delete from the database later.
+    setCourses(prevCourses => prevCourses.filter(course => course.id !== courseId));
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, field: string) => {
+    setNewCourse({
+      ...newCourse,
+      [field]: e.target.value,
+    });
+  };
 
   return (
     <div>
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Courses</h1>
-        <Dialog>
+        <Dialog open={isAddCourseDialogOpen} onOpenChange={setIsAddCourseDialogOpen}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="h-4 w-4 mr-2" />
@@ -53,33 +103,68 @@ export default function CoursesPage() {
             <div className="space-y-4 py-4">
               <div>
                 <Label>Course Title</Label>
-                <Input placeholder="Enter course title" className="mt-1" />
+                <Input
+                  value={newCourse.title}
+                  onChange={(e) => handleInputChange(e, 'title')}
+                  placeholder="Enter course title"
+                  className="mt-1"
+                />
               </div>
               <div>
                 <Label>Description</Label>
-                <Textarea placeholder="Enter course description" className="mt-1" />
+                <Textarea
+                  value={newCourse.description}
+                  onChange={(e) => handleInputChange(e, 'description')}
+                  placeholder="Enter course description"
+                  className="mt-1"
+                />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Instructor</Label>
-                  <Input placeholder="Instructor name" className="mt-1" />
+                  <Input
+                    value={newCourse.instructor}
+                    onChange={(e) => handleInputChange(e, 'instructor')}
+                    placeholder="Instructor name"
+                    className="mt-1"
+                  />
                 </div>
                 <div>
                   <Label>Price</Label>
-                  <Input type="number" placeholder="99.99" className="mt-1" />
+                  <Input
+                    type="number"
+                    value={newCourse.price}
+                    onChange={(e) => handleInputChange(e, 'price')}
+                    placeholder="99.99"
+                    className="mt-1"
+                  />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Duration</Label>
-                  <Input placeholder="e.g., 8 weeks" className="mt-1" />
+                  <Input
+                    value={newCourse.duration}
+                    onChange={(e) => handleInputChange(e, 'duration')}
+                    placeholder="e.g., 8 weeks"
+                    className="mt-1"
+                  />
                 </div>
                 <div>
                   <Label>Course Image</Label>
-                  <Input type="file" className="mt-1" />
+                  <Input
+                    type="file"
+                    onChange={(e) => handleInputChange(e, 'image')}
+                    className="mt-1"
+                  />
                 </div>
               </div>
-              <Button className="w-full">Create Course</Button>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsAddCourseDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="button" onClick={handleAddCourse}>Create Course</Button>
+              </DialogFooter>
             </div>
           </DialogContent>
         </Dialog>
@@ -98,7 +183,7 @@ export default function CoursesPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {courses.map((course) => (
+        {filteredCourses.map((course) => (
           <Card key={course.id} className="overflow-hidden">
             <div className="aspect-video w-full overflow-hidden">
               <img
@@ -127,7 +212,9 @@ export default function CoursesPage() {
               </div>
               <div className="mt-4 flex justify-between items-center">
                 <span className="text-lg font-bold">${course.price}</span>
-                <Button variant="outline">View Details</Button>
+                <Button variant="outline" onClick={() => handleDeleteCourse(course.id)}>
+                  <Trash2 className="h-4 w-4 text-red-500" />
+                </Button>
               </div>
             </div>
           </Card>
